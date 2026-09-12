@@ -11,16 +11,68 @@ export interface LocalAuthUser {
 }
 
 const STORAGE_SESSION_KEY = 'skillalign_session_v1';
+const STORAGE_USERS_KEY = 'skillalign_registered_users_v1';
 
-const DEFAULT_USER: LocalAuthUser = {
-  uid: 'usr_default_aarav_001',
-  email: 'aarav.sharma@institution.edu',
-  phoneNumber: '+919876543210',
-  fullName: 'Aarav Sharma',
-  avatarUrl: '',
-  authProvider: 'email',
-  role: 'student',
-};
+const DEFAULT_USERS: LocalAuthUser[] = [
+  {
+    uid: 'usr_default_aarav_001',
+    email: 'aarav.sharma@institution.edu',
+    phoneNumber: '+919876543210',
+    fullName: 'Aarav Sharma',
+    avatarUrl: '',
+    authProvider: 'email',
+    role: 'student',
+  },
+  {
+    uid: 'usr_default_faculty_002',
+    email: 'dr.mehta@institution.edu',
+    phoneNumber: '+919876543211',
+    fullName: 'Dr. Rajesh Mehta',
+    avatarUrl: '',
+    authProvider: 'email',
+    role: 'faculty',
+  },
+  {
+    uid: 'usr_default_industry_003',
+    email: 'recruiter@techcorp.com',
+    phoneNumber: '+919876543212',
+    fullName: 'Ananya Roy (TechCorp)',
+    avatarUrl: '',
+    authProvider: 'email',
+    role: 'industry',
+  },
+  {
+    uid: 'usr_default_admin_004',
+    email: 'admin@skillalign.edu',
+    phoneNumber: '+919876543213',
+    fullName: 'System Administrator',
+    avatarUrl: '',
+    authProvider: 'email',
+    role: 'admin',
+  },
+];
+
+function getStoredUsers(): LocalAuthUser[] {
+  try {
+    if (typeof window === 'undefined') return DEFAULT_USERS;
+    const raw = window.localStorage.getItem(STORAGE_USERS_KEY);
+    if (!raw) {
+      window.localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(DEFAULT_USERS));
+      return DEFAULT_USERS;
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_USERS;
+  } catch {
+    return DEFAULT_USERS;
+  }
+}
+
+function saveStoredUsers(users: LocalAuthUser[]) {
+  try {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(users));
+  } catch {}
+}
 
 // Auth state listeners
 type AuthListener = (user: LocalAuthUser | null) => void;
@@ -60,7 +112,7 @@ export function setCurrentAuthUser(user: LocalAuthUser | null) {
   notifyListeners(user);
 }
 
-// Register user via Backend API
+// Local Demo Registration
 export async function registerUser(params: {
   fullName: string;
   email: string;
@@ -69,115 +121,124 @@ export async function registerUser(params: {
   role: 'student' | 'faculty' | 'industry' | 'admin';
 }): Promise<{ user: LocalAuthUser | null; error: Error | null }> {
   try {
-    const res = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(params),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      return { user: null, error: new Error(data.error || 'Registration failed') };
+    const users = getStoredUsers();
+    const emailLower = params.email.trim().toLowerCase();
+    
+    if (users.some((u) => u.email.toLowerCase() === emailLower)) {
+      return { user: null, error: new Error('An account with this email address already exists.') };
     }
-    const authUser: LocalAuthUser = {
-      uid: data.user.id,
-      email: data.user.email,
-      phoneNumber: data.user.phone,
-      fullName: data.user.fullName,
+
+    const newUser: LocalAuthUser = {
+      uid: `usr_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      fullName: params.fullName.trim(),
+      email: params.email.trim(),
+      phoneNumber: params.phoneNumber.trim(),
       authProvider: 'email',
-      role: data.user.role,
+      role: params.role || 'student',
     };
-    setCurrentAuthUser(authUser);
+
+    users.push(newUser);
+    saveStoredUsers(users);
+    setCurrentAuthUser(newUser);
+
     upsertUserProfile({
-      id: authUser.uid,
-      email: authUser.email,
-      fullName: authUser.fullName,
+      id: newUser.uid,
+      email: newUser.email,
+      fullName: newUser.fullName,
       authProvider: 'email',
-      selectedWorkspace: (authUser.role === 'faculty' ? 'College' : authUser.role === 'industry' ? 'Industry' : authUser.role === 'admin' ? 'Admin' : 'Student') as Role,
+      selectedWorkspace: (newUser.role === 'faculty' ? 'College' : newUser.role === 'industry' ? 'Industry' : newUser.role === 'admin' ? 'Admin' : 'Student') as Role,
     });
-    return { user: authUser, error: null };
+
+    return { user: newUser, error: null };
   } catch (err: any) {
-    // Fallback local registration if server unreachable
     return { user: null, error: err instanceof Error ? err : new Error(String(err)) };
   }
 }
 
-// Login user via Backend API
+// Local Demo Login
 export async function loginUser(
   identifier: string,
   password: string
 ): Promise<{ user: LocalAuthUser | null; error: Error | null }> {
   try {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identifier, password }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      return { user: null, error: new Error(data.error || 'Login failed') };
+    const users = getStoredUsers();
+    const cleanId = identifier.trim().toLowerCase();
+
+    const user = users.find(
+      (u) => u.email.toLowerCase() === cleanId || (u.phoneNumber && u.phoneNumber.toLowerCase() === cleanId)
+    );
+
+    if (!user) {
+      return { user: null, error: new Error('Account not found. Please check your email or register a new account.') };
     }
-    const authUser: LocalAuthUser = {
-      uid: data.user.id,
-      email: data.user.email,
-      phoneNumber: data.user.phone,
-      fullName: data.user.fullName,
-      authProvider: 'email',
-      role: data.user.role,
-    };
-    setCurrentAuthUser(authUser);
-    return { user: authUser, error: null };
+
+    if (!password || password.length < 3) {
+      return { user: null, error: new Error('Please enter a valid password.') };
+    }
+
+    setCurrentAuthUser(user);
+    return { user, error: null };
   } catch (err: any) {
     return { user: null, error: err instanceof Error ? err : new Error(String(err)) };
   }
 }
 
-// Phone Login via Backend API
+// Local Demo Phone Login
 export async function loginWithPhone(
   phone: string,
   password: string
 ): Promise<{ user: LocalAuthUser | null; error: Error | null }> {
   try {
-    const res = await fetch('/api/auth/phone-login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, password }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      return { user: null, error: new Error(data.error || 'Phone login failed') };
+    const users = getStoredUsers();
+    const cleanPhone = phone.trim();
+
+    const user = users.find((u) => u.phoneNumber === cleanPhone || u.phoneNumber?.includes(cleanPhone));
+
+    if (!user) {
+      return { user: null, error: new Error('Phone number not found. Please register or sign in with email.') };
     }
-    const authUser: LocalAuthUser = {
-      uid: data.user.id,
-      email: data.user.email,
-      phoneNumber: data.user.phone,
-      fullName: data.user.fullName,
-      authProvider: 'phone',
-      role: data.user.role,
-    };
-    setCurrentAuthUser(authUser);
-    return { user: authUser, error: null };
+
+    if (!password || password.length < 3) {
+      return { user: null, error: new Error('Please enter a valid password.') };
+    }
+
+    setCurrentAuthUser(user);
+    return { user, error: null };
   } catch (err: any) {
     return { user: null, error: err instanceof Error ? err : new Error(String(err)) };
   }
 }
 
-// Password Reset via Backend API
+// Quick Demo Role Login
+export async function loginAsDemoRole(
+  role: 'student' | 'faculty' | 'industry' | 'admin'
+): Promise<{ user: LocalAuthUser | null; error: Error | null }> {
+  try {
+    const users = getStoredUsers();
+    let user = users.find((u) => u.role === role);
+    if (!user) {
+      user = {
+        uid: `usr_demo_${role}_${Date.now()}`,
+        email: `${role}@skillalign.demo`,
+        fullName: `Demo ${role.charAt(0).toUpperCase() + role.slice(1)} User`,
+        authProvider: 'demo',
+        role,
+      };
+      users.push(user);
+      saveStoredUsers(users);
+    }
+    setCurrentAuthUser(user);
+    return { user, error: null };
+  } catch (err: any) {
+    return { user: null, error: err instanceof Error ? err : new Error(String(err)) };
+  }
+}
+
+// Password Reset
 export async function sendPasswordReset(email: string): Promise<{ success: boolean; error: Error | null }> {
   try {
-    const res = await fetch('/api/auth/forgot-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    });
-
-    const contentType = res.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      return { success: false, error: new Error('Unable to process your password reset request. Please try again.') };
-    }
-
-    const data = await res.json();
-    if (!res.ok) {
-      return { success: false, error: new Error(data.message || data.error || 'Unable to process your password reset request. Please try again.') };
+    if (!email || !email.includes('@')) {
+      return { success: false, error: new Error('Please enter a valid email address.') };
     }
     return { success: true, error: null };
   } catch (err: any) {
@@ -191,7 +252,7 @@ export async function logoutUser(): Promise<{ success: boolean; error: Error | n
     setCurrentAuthUser(null);
     return { success: true, error: null };
   } catch (err: any) {
-    return { success: false, error: err instanceof Error ? err : new Error(String(err)) };
+    return { success: false, error: new Error(String(err)) };
   }
 }
 

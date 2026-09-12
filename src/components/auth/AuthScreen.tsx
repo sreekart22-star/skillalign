@@ -20,10 +20,12 @@ import {
   GraduationCap,
   Briefcase,
   ShieldAlert,
+  Sparkles,
 } from 'lucide-react';
 import {
   loginUser,
   loginWithPhone,
+  loginAsDemoRole,
   registerUser,
   sendPasswordReset,
 } from '../../lib/authService';
@@ -165,6 +167,22 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
     }
   };
 
+  // Handle Quick Demo Role Login
+  const handleDemoRoleLogin = async (role: 'student' | 'faculty' | 'industry' | 'admin') => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    const { user, error } = await loginAsDemoRole(role);
+    setIsLoading(false);
+
+    if (error) {
+      setErrorMessage(error.message || 'Demo login failed.');
+    } else if (user) {
+      setSuccessMessage(`Logged in as Demo ${role.toUpperCase()}! Loading workspace...`);
+      onAuthenticated(user);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-slate-900 flex flex-col justify-between selection:bg-sky-100 selection:text-sky-900">
       {/* Top Header Bar */}
@@ -183,9 +201,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
-              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Secure SkillAlign Authentication</span>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold">
+              <Sparkles className="size-3.5 text-amber-600 animate-pulse" />
+              <span>Demo Mode</span>
             </div>
           </div>
         </div>
@@ -369,6 +387,52 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
                     <Phone className="size-4 text-sky-600" />
                     <span>Continue with Phone</span>
                   </button>
+
+                  <div className="pt-3">
+                    <div className="relative flex py-1 items-center">
+                      <div className="flex-grow border-t border-stone-200"></div>
+                      <span className="flex-shrink mx-3 text-[10px] font-bold text-stone-600 uppercase tracking-widest">Or Quick Demo Login</span>
+                      <div className="flex-grow border-t border-stone-200"></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => handleDemoRoleLogin('student')}
+                        disabled={isLoading}
+                        className="px-3 py-2 rounded-xl border border-sky-200 bg-sky-50 text-sky-900 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-sky-100 transition cursor-pointer"
+                      >
+                        <GraduationCap className="size-3.5 text-sky-700" />
+                        <span>Demo Student</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDemoRoleLogin('faculty')}
+                        disabled={isLoading}
+                        className="px-3 py-2 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-900 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-indigo-100 transition cursor-pointer"
+                      >
+                        <Building2 className="size-3.5 text-indigo-700" />
+                        <span>Demo Faculty</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDemoRoleLogin('industry')}
+                        disabled={isLoading}
+                        className="px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-900 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-emerald-100 transition cursor-pointer"
+                      >
+                        <Briefcase className="size-3.5 text-emerald-700" />
+                        <span>Demo Industry</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDemoRoleLogin('admin')}
+                        disabled={isLoading}
+                        className="px-3 py-2 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-amber-100 transition cursor-pointer"
+                      >
+                        <ShieldAlert className="size-3.5 text-amber-700" />
+                        <span>Demo Admin</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </form>
             )}
