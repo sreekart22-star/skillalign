@@ -107,7 +107,14 @@ export async function signInWithGoogle(): Promise<{ user: FirebaseUser | null; e
     return { user: result.user, error: null };
   } catch (err: any) {
     console.error('Firebase Google Sign-In error:', err);
-    return { user: null, error: err instanceof Error ? err : new Error(String(err)) };
+    let errorToReturn = err instanceof Error ? err : new Error(String(err));
+    if (err?.code === 'auth/unauthorized-domain' || (err?.message && err.message.includes('unauthorized-domain'))) {
+      const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'skillalign-ksmc.vercel.app';
+      errorToReturn = new Error(
+        `Firebase Error (auth/unauthorized-domain): The domain '${currentDomain}' is not authorized in Firebase Console. Please add '${currentDomain}' in Firebase Console > Authentication > Settings > Authorized domains.`
+      );
+    }
+    return { user: null, error: errorToReturn };
   }
 }
 
@@ -134,7 +141,14 @@ export async function sendPasswordlessEmailLink(
     return { success: true, error: null };
   } catch (err: any) {
     console.error('Firebase sendSignInLinkToEmail error:', err);
-    return { success: false, error: err instanceof Error ? err : new Error(String(err)) };
+    let errorToReturn = err instanceof Error ? err : new Error(String(err));
+    if (err?.code === 'auth/unauthorized-domain' || (err?.message && err.message.includes('unauthorized-domain'))) {
+      const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'skillalign-ksmc.vercel.app';
+      errorToReturn = new Error(
+        `Firebase Error (auth/unauthorized-domain): The domain '${currentDomain}' is not authorized in Firebase Console. Please add '${currentDomain}' in Firebase Console > Authentication > Settings > Authorized domains.`
+      );
+    }
+    return { success: false, error: errorToReturn };
   }
 }
 
@@ -159,7 +173,14 @@ export async function completeEmailLinkSignIn(
     return { user: result.user, error: null };
   } catch (err: any) {
     console.error('Firebase completeEmailLinkSignIn error:', err);
-    return { user: null, error: err instanceof Error ? err : new Error(String(err)) };
+    let errorToReturn = err instanceof Error ? err : new Error(String(err));
+    if (err?.code === 'auth/unauthorized-domain' || (err?.message && err.message.includes('unauthorized-domain'))) {
+      const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'skillalign-ksmc.vercel.app';
+      errorToReturn = new Error(
+        `Firebase Error (auth/unauthorized-domain): The domain '${currentDomain}' is not authorized in Firebase Console. Please add '${currentDomain}' in Firebase Console > Authentication > Settings > Authorized domains.`
+      );
+    }
+    return { user: null, error: errorToReturn };
   }
 }
 

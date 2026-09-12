@@ -1,6 +1,10 @@
 {
   "name": "SkillAlign",
   "description": "Bridging the Gap Between Education, Skills & Industry. Aligning skill development programs with evolving industry requirements and emerging job market demands.",
-  "requestFramePermissions": ["camera"],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
