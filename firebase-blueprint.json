@@ -1,0 +1,51 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile in SkillAlign AI",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Firebase user UID"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Email address of the authenticated user"
+        },
+        "fullName": {
+          "type": "string",
+          "description": "Display name or full name of user"
+        },
+        "avatarUrl": {
+          "type": "string",
+          "description": "Avatar or profile picture URL"
+        },
+        "authProvider": {
+          "type": "string",
+          "description": "Authentication provider such as google or email"
+        },
+        "selectedWorkspace": {
+          "type": "string",
+          "description": "Active chosen workspace (Student, Institution, Faculty, Employer, Admin)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of creation"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last update"
+        }
+      },
+      "required": ["id", "email"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Private user profiles restricted to the authenticated document owner"
+    }
+  }
+}
