@@ -3,9 +3,9 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
-  sendSignInLinkToEmail,
-  isSignInWithEmailLink,
-  signInWithEmailLink,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut,
   onAuthStateChanged,
   User as FirebaseUser,
@@ -118,69 +118,68 @@ export async function signInWithGoogle(): Promise<{ user: FirebaseUser | null; e
   }
 }
 
-// Action code settings for Passwordless Email Sign-In link
-const getActionCodeSettings = () => {
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
-  return {
-    url: `${origin}${pathname}`,
-    handleCodeInApp: true,
-  };
-};
-
-// Send real passwordless email sign-in link via Firebase Authentication
-export async function sendPasswordlessEmailLink(
-  email: string
-): Promise<{ success: boolean; error: Error | null }> {
+// Standard Firebase Email/Password Sign-In
+export async function signInWithEmail(
+  email: string,
+  pass: string
+): Promise<{ user: FirebaseUser | null; error: Error | null }> {
   try {
-    const actionCodeSettings = getActionCodeSettings();
-    await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('skillalign_email_for_sign_in', email);
-    }
-    return { success: true, error: null };
+    const result = await signInWithEmailAndPassword(auth, email, pass);
+    return { user: result.user, error: null };
   } catch (err: any) {
-    console.error('Firebase sendSignInLinkToEmail error:', err);
+    console.error('Firebase signInWithEmailAndPassword error:', err);
     let errorToReturn = err instanceof Error ? err : new Error(String(err));
-    if (err?.code === 'auth/unauthorized-domain' || (err?.message && err.message.includes('unauthorized-domain'))) {
-      const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'skillalign-ksmc.vercel.app';
-      errorToReturn = new Error(
-        `Firebase Error (auth/unauthorized-domain): The domain '${currentDomain}' is not authorized in Firebase Console. Please add '${currentDomain}' in Firebase Console > Authentication > Settings > Authorized domains.`
-      );
+    if (err?.code === 'auth/wrong-password' || err?.code === 'auth/invalid-credential') {
+      errorToReturn = new Error('Invalid email or password. Please try again.');
+    } else if (err?.code === 'auth/user-not-found') {
+      errorToReturn = new Error('No account found with this email. Please sign up first.');
+    } else if (err?.code === 'auth/invalid-email') {
+      errorToReturn = new Error('Please enter a valid email address.');
+    } else if (err?.code === 'auth/user-disabled') {
+      errorToReturn = new Error('This user account has been disabled.');
     }
-    return { success: false, error: errorToReturn };
+    return { user: null, error: errorToReturn };
   }
 }
 
-// Check if current URL is a Firebase email sign-in link
-export function checkIsEmailSignInLink(): boolean {
-  if (typeof window === 'undefined') return false;
-  return isSignInWithEmailLink(auth, window.location.href);
-}
-
-// Verify email sign-in link with real Firebase Authentication
-export async function completeEmailLinkSignIn(
-  email: string
+// Standard Firebase Email/Password Sign-Up (Register)
+export async function signUpWithEmail(
+  email: string,
+  pass: string
 ): Promise<{ user: FirebaseUser | null; error: Error | null }> {
   try {
-    if (!isSignInWithEmailLink(auth, window.location.href)) {
-      throw new Error('Current URL is not a valid Firebase sign-in email link.');
-    }
-    const result = await signInWithEmailLink(auth, email, window.location.href);
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem('skillalign_email_for_sign_in');
-    }
+    const result = await createUserWithEmailAndPassword(auth, email, pass);
     return { user: result.user, error: null };
   } catch (err: any) {
-    console.error('Firebase completeEmailLinkSignIn error:', err);
+    console.error('Firebase createUserWithEmailAndPassword error:', err);
     let errorToReturn = err instanceof Error ? err : new Error(String(err));
-    if (err?.code === 'auth/unauthorized-domain' || (err?.message && err.message.includes('unauthorized-domain'))) {
-      const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'skillalign-ksmc.vercel.app';
-      errorToReturn = new Error(
-        `Firebase Error (auth/unauthorized-domain): The domain '${currentDomain}' is not authorized in Firebase Console. Please add '${currentDomain}' in Firebase Console > Authentication > Settings > Authorized domains.`
-      );
+    if (err?.code === 'auth/email-already-in-use') {
+      errorToReturn = new Error('An account with this email already exists. Please log in.');
+    } else if (err?.code === 'auth/weak-password') {
+      errorToReturn = new Error('Password should be at least 6 characters long.');
+    } else if (err?.code === 'auth/invalid-email') {
+      errorToReturn = new Error('Please enter a valid email address.');
     }
     return { user: null, error: errorToReturn };
+  }
+}
+
+// Send Firebase Password Reset Email
+export async function sendPasswordReset(
+  email: string
+): Promise<{ success: boolean; error: Error | null }> {
+  try {
+    await sendPasswordResetEmail(auth, email);
+    return { success: true, error: null };
+  } catch (err: any) {
+    console.error('Firebase sendPasswordResetEmail error:', err);
+    let errorToReturn = err instanceof Error ? err : new Error(String(err));
+    if (err?.code === 'auth/user-not-found') {
+      errorToReturn = new Error('No account found with this email address.');
+    } else if (err?.code === 'auth/invalid-email') {
+      errorToReturn = new Error('Please enter a valid email address.');
+    }
+    return { success: false, error: errorToReturn };
   }
 }
 
