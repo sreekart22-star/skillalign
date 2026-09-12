@@ -331,14 +331,21 @@ app.post('/api/auth/phone-login', (req, res) => {
 });
 
 app.post('/api/auth/forgot-password', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
   try {
     const { email } = req.body;
     if (!email) {
-      return res.status(400).json({ error: 'Email address is required.' });
+      return res.status(400).json({ success: false, message: 'Email address is required.' });
     }
-    res.json({ success: true, message: 'If an account exists with this email, password reset instructions have been sent.' });
+    return res.status(200).json({
+      success: true,
+      message: 'If an account exists for this email, password reset instructions will be provided.'
+    });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Password reset failed' });
+    return res.status(500).json({
+      success: false,
+      message: 'Unable to process the request.'
+    });
   }
 });
 

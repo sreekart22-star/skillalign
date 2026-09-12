@@ -169,13 +169,19 @@ export async function sendPasswordReset(email: string): Promise<{ success: boole
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
     });
+
+    const contentType = res.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      return { success: false, error: new Error('Unable to process your password reset request. Please try again.') };
+    }
+
     const data = await res.json();
     if (!res.ok) {
-      return { success: false, error: new Error(data.error || 'Password reset request failed') };
+      return { success: false, error: new Error(data.message || data.error || 'Unable to process your password reset request. Please try again.') };
     }
     return { success: true, error: null };
   } catch (err: any) {
-    return { success: false, error: err instanceof Error ? err : new Error(String(err)) };
+    return { success: false, error: new Error('Unable to process your password reset request. Please try again.') };
   }
 }
 
