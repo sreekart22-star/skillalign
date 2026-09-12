@@ -27,6 +27,7 @@ interface HeaderProps {
   isDemoStudentActive?: boolean;
   onToggleDemoStudent?: () => void;
   userEmail?: string;
+  isAdmin?: boolean;
   onLogout?: () => void;
   onOpenWorkspaceSelection?: () => void;
 }
@@ -43,6 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
   isDemoStudentActive,
   onToggleDemoStudent,
   userEmail,
+  isAdmin,
   onLogout,
   onOpenWorkspaceSelection,
 }) => {
@@ -152,7 +154,9 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Role Switcher Dropdown / Pills */}
           <div className="hidden md:flex items-center gap-1 rounded-xl border border-stone-200 bg-[#FAF8F5] p-1">
-            {(['Student', 'Institution', 'Faculty', 'Employer', 'Admin'] as Role[]).map((role) => {
+            {(['Student', 'Institution', 'Faculty', 'Employer', 'Admin'] as Role[])
+              .filter((role) => role !== 'Admin' || isAdmin)
+              .map((role) => {
               const isActive = currentRole === role;
               return (
                 <button

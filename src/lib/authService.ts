@@ -7,7 +7,16 @@ export interface LocalAuthUser {
   fullName: string;
   avatarUrl?: string;
   authProvider: string;
-  role?: 'student' | 'faculty' | 'industry' | 'admin';
+  role?: 'student' | 'faculty' | 'industry' | 'admin' | 'institution';
+  verificationStatus?: 'Pending' | 'Under Review' | 'Verified' | 'Rejected' | 'Suspended';
+  academicInfo?: {
+    institute?: string;
+    university?: string;
+    degree?: string;
+    department?: string;
+    academicYear?: string;
+    rollNo?: string;
+  };
 }
 
 const STORAGE_SESSION_KEY = 'skillalign_session_v1';
@@ -118,7 +127,15 @@ export async function registerUser(params: {
   email: string;
   phoneNumber: string;
   password: string;
-  role: 'student' | 'faculty' | 'industry' | 'admin';
+  role: 'student' | 'faculty' | 'industry' | 'institution';
+  academicInfo?: {
+    institute?: string;
+    university?: string;
+    degree?: string;
+    department?: string;
+    academicYear?: string;
+    rollNo?: string;
+  };
 }): Promise<{ user: LocalAuthUser | null; error: Error | null }> {
   try {
     const users = getStoredUsers();
@@ -135,18 +152,22 @@ export async function registerUser(params: {
       phoneNumber: params.phoneNumber.trim(),
       authProvider: 'email',
       role: params.role || 'student',
+      verificationStatus: 'Pending',
+      academicInfo: params.academicInfo || {},
     };
 
     users.push(newUser);
     saveStoredUsers(users);
     setCurrentAuthUser(newUser);
 
+    const workspaceRole = params.role === 'faculty' ? 'Faculty' : params.role === 'industry' ? 'Employer' : params.role === 'institution' ? 'Institution' : 'Student';
+
     upsertUserProfile({
       id: newUser.uid,
       email: newUser.email,
       fullName: newUser.fullName,
       authProvider: 'email',
-      selectedWorkspace: (newUser.role === 'faculty' ? 'College' : newUser.role === 'industry' ? 'Industry' : newUser.role === 'admin' ? 'Admin' : 'Student') as Role,
+      selectedWorkspace: workspaceRole as Role,
     });
 
     return { user: newUser, error: null };

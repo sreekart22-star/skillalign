@@ -50,7 +50,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
   const [regPhone, setRegPhone] = useState<string>('');
   const [regPassword, setRegPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
-  const [userRole, setUserRole] = useState<'student' | 'faculty' | 'industry' | 'admin'>('student');
+  const [userRole, setUserRole] = useState<'student' | 'faculty' | 'industry' | 'institution'>('student');
+  const [academicInstitute, setAcademicInstitute] = useState<string>('ABC Institute of Technology');
+  const [academicUniversity, setAcademicUniversity] = useState<string>('National Technological University');
+  const [academicDegree, setAcademicDegree] = useState<string>('B.Tech Computer Science');
+  const [academicYear, setAcademicYear] = useState<string>('Final Year (2026)');
+  const [academicRollNo, setAcademicRollNo] = useState<string>('CS2026-891');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -130,6 +135,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
       phoneNumber: fullPhone,
       password: regPassword,
       role: userRole,
+      academicInfo: userRole === 'student' ? {
+        institute: academicInstitute,
+        university: academicUniversity,
+        degree: academicDegree,
+        academicYear: academicYear,
+        rollNo: academicRollNo,
+      } : undefined,
     });
     setIsLoading(false);
 
@@ -596,7 +608,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    User Type
+                    User Type (Admin is strictly restricted)
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -625,6 +637,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
                     </button>
                     <button
                       type="button"
+                      onClick={() => setUserRole('institution')}
+                      className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                        userRole === 'institution'
+                          ? 'border-violet-600 bg-violet-50 text-violet-900 shadow-xs'
+                          : 'border-stone-200 bg-stone-50 text-stone-700 hover:border-stone-300'
+                      }`}
+                    >
+                      <Building2 className="size-3.5 text-violet-700" />
+                      <span>Institute</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setUserRole('industry')}
                       className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                         userRole === 'industry'
@@ -633,22 +657,66 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
                       }`}
                     >
                       <Briefcase className="size-3.5 text-emerald-700" />
-                      <span>Industry</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setUserRole('admin')}
-                      className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                        userRole === 'admin'
-                          ? 'border-amber-600 bg-amber-50 text-amber-900 shadow-xs'
-                          : 'border-stone-200 bg-stone-50 text-stone-700 hover:border-stone-300'
-                      }`}
-                    >
-                      <ShieldAlert className="size-3.5 text-amber-700" />
-                      <span>Admin</span>
+                      <span>Employer</span>
                     </button>
                   </div>
                 </div>
+
+                {userRole === 'student' && (
+                  <div className="rounded-xl border border-sky-200 bg-sky-50/50 p-3 space-y-2.5">
+                    <span className="text-xs font-bold text-sky-900 block">
+                      Academic Affiliation Information (Verification Pending)
+                    </span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-700 uppercase mb-0.5">Institute / College</label>
+                        <input
+                          type="text"
+                          value={academicInstitute}
+                          onChange={(e) => setAcademicInstitute(e.target.value)}
+                          placeholder="ABC Institute of Technology"
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-stone-300 bg-white text-xs text-slate-900"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-700 uppercase mb-0.5">Degree / Branch</label>
+                        <input
+                          type="text"
+                          value={academicDegree}
+                          onChange={(e) => setAcademicDegree(e.target.value)}
+                          placeholder="B.Tech Computer Science"
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-stone-300 bg-white text-xs text-slate-900"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-700 uppercase mb-0.5">Academic Year</label>
+                        <input
+                          type="text"
+                          value={academicYear}
+                          onChange={(e) => setAcademicYear(e.target.value)}
+                          placeholder="Final Year (2026)"
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-stone-300 bg-white text-xs text-slate-900"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-700 uppercase mb-0.5">Roll Number / Student ID</label>
+                        <input
+                          type="text"
+                          value={academicRollNo}
+                          onChange={(e) => setAcademicRollNo(e.target.value)}
+                          placeholder="CS2026-891"
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-stone-300 bg-white text-xs text-slate-900"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">

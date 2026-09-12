@@ -21,6 +21,7 @@ import { saveUserWorkspace } from '../../lib/authService';
 interface WorkspaceSelectionScreenProps {
   userEmail: string;
   userProfile: UserProfile | null;
+  isAdmin?: boolean;
   onSelectWorkspace: (role: Role) => void;
   onOpenJudgeMode: () => void;
   onLogout: () => void;
@@ -29,6 +30,7 @@ interface WorkspaceSelectionScreenProps {
 export const WorkspaceSelectionScreen: React.FC<WorkspaceSelectionScreenProps> = ({
   userEmail,
   userProfile,
+  isAdmin,
   onSelectWorkspace,
   onOpenJudgeMode,
   onLogout,
@@ -37,7 +39,7 @@ export const WorkspaceSelectionScreen: React.FC<WorkspaceSelectionScreenProps> =
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [showStudentWelcome, setShowStudentWelcome] = useState<boolean>(false);
 
-  const workspaces: Array<{
+  const baseWorkspaces: Array<{
     role: Role;
     title: string;
     emoji: string;
@@ -118,6 +120,8 @@ export const WorkspaceSelectionScreen: React.FC<WorkspaceSelectionScreenProps> =
       borderColor: 'hover:border-slate-600',
     },
   ];
+
+  const workspaces = baseWorkspaces.filter((w) => w.role !== 'Admin' || isAdmin);
 
   const handleChoose = async (role: Role) => {
     setSelectedRole(role);

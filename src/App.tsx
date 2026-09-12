@@ -290,6 +290,7 @@ export function App() {
         <WorkspaceSelectionScreen
           userEmail={currentUser.email || userProfile?.email || 'authenticated@skillalign.ai'}
           userProfile={userProfile}
+          isAdmin={currentUser?.role === 'admin'}
           onSelectWorkspace={handleSelectWorkspace}
           onOpenJudgeMode={() => setIsJudgeModalOpen(true)}
           onLogout={handleLogout}
@@ -453,6 +454,7 @@ export function App() {
         isDemoStudentActive={isDemoStudentActive}
         onToggleDemoStudent={handleToggleDemoStudent}
         userEmail={currentUser?.email || userProfile?.email || ''}
+        isAdmin={currentUser?.role === 'admin'}
         onLogout={handleLogout}
         onOpenWorkspaceSelection={() => setMainView('portal')}
       />
@@ -786,8 +788,31 @@ export function App() {
           {/* ADMIN VIEWS */}
           {currentRole === 'Admin' && (
             <>
-              {activePage === 'system' && <AdminSystemControl />}
-              {activePage === 'future' && <FutureSkillsView audience="Admin" />}
+              {currentUser?.role === 'admin' ? (
+                <>
+                  {activePage === 'system' && <AdminSystemControl />}
+                  {activePage === 'future' && <FutureSkillsView audience="Admin" />}
+                </>
+              ) : (
+                <div className="p-8 rounded-2xl border border-red-200 bg-red-50 text-center max-w-xl mx-auto my-12 shadow-sm">
+                  <div className="size-16 rounded-2xl bg-red-100 text-red-600 grid place-items-center mx-auto mb-4 text-xl font-bold">
+                    403
+                  </div>
+                  <h2 className="text-xl font-bold text-red-900 mb-2">403 — Access Denied (Admin Portal)</h2>
+                  <p className="text-sm text-red-700 mb-6">
+                    You are signed in as <span className="font-semibold">{currentUser?.email || 'User'}</span> with role <span className="font-semibold uppercase">{currentUser?.role || 'User'}</span>. This secure administrative governance tier is strictly restricted to authorized system administrators.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setCurrentRole('Student');
+                      setActivePage('dashboard');
+                    }}
+                    className="px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition cursor-pointer shadow-xs"
+                  >
+                    Return to Student Dashboard
+                  </button>
+                </div>
+              )}
             </>
           )}
         </main>
