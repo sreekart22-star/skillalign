@@ -4,25 +4,29 @@ import {
   ShieldCheck,
   Mail,
   Lock,
+  Phone,
+  User,
+  Eye,
+  EyeOff,
   ArrowRight,
-  RefreshCw,
   AlertTriangle,
   CheckCircle2,
-  Sparkles,
   ChevronLeft,
   Loader2,
-  Send,
-  UserPlus,
   LogIn,
+  UserPlus,
   KeyRound,
+  Building2,
+  GraduationCap,
+  Briefcase,
+  ShieldAlert,
 } from 'lucide-react';
 import {
-  signInWithGoogle,
-  signInWithEmail,
-  signUpWithEmail,
+  loginUser,
+  loginWithPhone,
+  registerUser,
   sendPasswordReset,
-  isFirebaseConfigured,
-} from '../../lib/firebaseClient';
+} from '../../lib/authService';
 import { AuthState } from '../../types';
 
 interface AuthScreenProps {
@@ -30,49 +34,31 @@ interface AuthScreenProps {
   initialState?: AuthState;
 }
 
-type AuthMode = 'LOGIN' | 'REGISTER' | 'FORGOT_PASSWORD';
+type AuthMode = 'LOGIN' | 'REGISTER' | 'FORGOT_PASSWORD' | 'PHONE_LOGIN';
 
-export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, initialState = 'LOGIN' }) => {
+export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
   const [mode, setMode] = useState<AuthMode>('LOGIN');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [countryCode, setCountryCode] = useState<string>('+91');
+  const [phoneNumber, setPhoneNumber] = useState<string>('');
+  const [phonePassword, setPhonePassword] = useState<string>('');
+  const [fullName, setFullName] = useState<string>('');
+  const [regEmail, setRegEmail] = useState<string>('');
+  const [regPhone, setRegPhone] = useState<string>('');
+  const [regPassword, setRegPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [userRole, setUserRole] = useState<'student' | 'faculty' | 'industry' | 'admin'>('student');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const isConfigured = isFirebaseConfigured();
 
-  // Handle Google Sign-In
-  const handleGoogleSignIn = async () => {
-    if (!isConfigured) {
-      setErrorMessage('Firebase is not configured yet. Please check project settings.');
-      return;
-    }
-
-    setErrorMessage(null);
-    setSuccessMessage(null);
-    setIsLoading(true);
-
-    try {
-      const { user, error } = await signInWithGoogle();
-      if (error) {
-        setErrorMessage(error.message || 'Google sign-in failed or was cancelled.');
-        setIsLoading(false);
-      } else if (user) {
-        setSuccessMessage('Google sign-in successful. Loading workspace...');
-        onAuthenticated(user);
-      }
-    } catch (err: any) {
-      setErrorMessage(err?.message || 'An unexpected error occurred during Google sign-in.');
-      setIsLoading(false);
-    }
-  };
-
-  // Handle Login with Email & Password
-  const handleLogin = async (e: React.FormEvent) => {
+  // Handle Email Login
+  const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password) {
-      setErrorMessage('Please enter both email and password.');
+      setErrorMessage('Please enter both email address and password.');
       return;
     }
 
@@ -80,28 +66,53 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, initial
     setSuccessMessage(null);
     setIsLoading(true);
 
-    const { user, error } = await signInWithEmail(email.trim(), password);
+    const { user, error } = await loginUser(email.trim(), password);
+    setIsLoading(false);
+
     if (error) {
       setErrorMessage(error.message || 'Login failed. Please check your credentials.');
-      setIsLoading(false);
     } else if (user) {
-      setSuccessMessage('Login successful! Redirecting...');
+      setSuccessMessage('Login successful! Loading workspace...');
       onAuthenticated(user);
     }
   };
 
-  // Handle Register (Sign Up)
-  const handleRegister = async (e: React.FormEvent) => {
+  // Handle Phone Login
+  const handlePhoneLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password) {
-      setErrorMessage('Please enter both email and password.');
+    if (!phoneNumber.trim() || !phonePassword) {
+      setErrorMessage('Please enter both phone number and password.');
       return;
     }
-    if (password.length < 6) {
+
+    const fullPhone = `${countryCode}${phoneNumber.trim()}`;
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setIsLoading(true);
+
+    const { user, error } = await loginWithPhone(fullPhone, phonePassword);
+    setIsLoading(false);
+
+    if (error) {
+      setErrorMessage(error.message || 'Phone login failed. Please check your credentials.');
+    } else if (user) {
+      setSuccessMessage('Phone login successful! Loading workspace...');
+      onAuthenticated(user);
+    }
+  };
+
+  // Handle Registration
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fullName.trim() || !regEmail.trim() || !regPhone.trim() || !regPassword) {
+      setErrorMessage('Please fill in all required fields.');
+      return;
+    }
+    if (regPassword.length < 6) {
       setErrorMessage('Password must be at least 6 characters long.');
       return;
     }
-    if (password !== confirmPassword) {
+    if (regPassword !== confirmPassword) {
       setErrorMessage('Passwords do not match.');
       return;
     }
@@ -110,21 +121,33 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, initial
     setSuccessMessage(null);
     setIsLoading(true);
 
-    const { user, error } = await signUpWithEmail(email.trim(), password);
+    const fullPhone = `${countryCode}${regPhone.trim()}`;
+    const { user, error } = await registerUser({
+      fullName: fullName.trim(),
+      email: regEmail.trim(),
+      phoneNumber: fullPhone,
+      password: regPassword,
+      role: userRole,
+    });
+    setIsLoading(false);
+
     if (error) {
       setErrorMessage(error.message || 'Registration failed. Please try again.');
-      setIsLoading(false);
     } else if (user) {
-      setSuccessMessage('Account created successfully! Redirecting...');
-      onAuthenticated(user);
+      setSuccessMessage('Account created successfully. Please log in.');
+      setTimeout(() => {
+        setMode('LOGIN');
+        setEmail(regEmail.trim());
+        setSuccessMessage(null);
+      }, 1500);
     }
   };
 
-  // Handle Password Reset
+  // Handle Forgot Password
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) {
-      setErrorMessage('Please enter your email address for password reset.');
+      setErrorMessage('Please enter your registered email address.');
       return;
     }
 
@@ -134,10 +157,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, initial
 
     const { success, error } = await sendPasswordReset(email.trim());
     setIsLoading(false);
+
     if (error) {
-      setErrorMessage(error.message || 'Failed to send password reset email.');
+      setErrorMessage(error.message || 'Password reset request failed.');
     } else if (success) {
-      setSuccessMessage(`Password reset link sent to ${email.trim()}. Please check your inbox.`);
+      setSuccessMessage(`Password reset instructions sent to ${email.trim()}.`);
     }
   };
 
@@ -161,7 +185,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, initial
           <div className="flex items-center gap-2">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
               <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Firebase Auth Active</span>
+              <span>Secure SkillAlign Authentication</span>
             </div>
           </div>
         </div>
@@ -182,15 +206,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, initial
                 <ShieldCheck className="size-6 text-sky-400" />
               </div>
               <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
-                SKILLALIGN
+                Welcome to SkillAlign
               </h1>
-              <p className="text-xs font-bold text-sky-800 mt-1">
-                &ldquo;Bridging the Gap Between Education, Skills & Industry.&rdquo;
-              </p>
               <p className="text-xs text-slate-600 mt-1 font-medium">
-                {mode === 'LOGIN' && 'Sign in with your email or Google account.'}
+                {mode === 'LOGIN' && 'Sign in to continue to the SkillAlign Intelligence Platform.'}
+                {mode === 'PHONE_LOGIN' && 'Sign in securely using your phone number and password.'}
                 {mode === 'REGISTER' && 'Create your account to start aligning skills & opportunities.'}
-                {mode === 'FORGOT_PASSWORD' && 'Reset your account password securely.'}
+                {mode === 'FORGOT_PASSWORD' && 'Recover your account password securely.'}
               </p>
             </div>
 
@@ -205,7 +227,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, initial
                     setSuccessMessage(null);
                   }}
                   className={`py-2 text-xs font-bold rounded-lg transition cursor-pointer ${
-                    mode === 'LOGIN'
+                    mode === 'LOGIN' || mode === 'PHONE_LOGIN'
                       ? 'bg-white text-slate-900 shadow-xs'
                       : 'text-stone-600 hover:text-slate-900'
                   }`}
@@ -225,7 +247,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, initial
                       : 'text-stone-600 hover:text-slate-900'
                   }`}
                 >
-                  Register
+                  Create Account
                 </button>
               </div>
             )}
@@ -259,127 +281,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, initial
               )}
             </AnimatePresence>
 
-            {/* LOGIN FORM */}
+            {/* EMAIL LOGIN FORM */}
             {mode === 'LOGIN' && (
-              <div className="space-y-4">
-                <button
-                  type="button"
-                  onClick={handleGoogleSignIn}
-                  disabled={isLoading}
-                  className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-stone-300 bg-white text-slate-800 text-sm font-bold shadow-xs hover:bg-stone-50 hover:border-stone-400 active:scale-[0.99] transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin text-sky-600" />
-                      <span>Connecting...</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="size-4.5" viewBox="0 0 24 24">
-                        <path
-                          fill="#4285F4"
-                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                        />
-                        <path
-                          fill="#34A853"
-                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                        />
-                        <path
-                          fill="#FBBC05"
-                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                        />
-                        <path
-                          fill="#EA4335"
-                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                        />
-                      </svg>
-                      <span>Continue with Google</span>
-                    </>
-                  )}
-                </button>
-
-                <div className="relative flex items-center justify-center my-4">
-                  <div className="w-full border-t border-stone-200" />
-                  <span className="bg-white px-3 text-[11px] font-bold text-slate-700 uppercase tracking-wider relative">
-                    Or with email &amp; password
-                  </span>
-                </div>
-
-                <form onSubmit={handleLogin} className="space-y-3.5">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                      Email address
-                    </label>
-                    <div className="relative">
-                      <Mail className="size-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@institution.edu"
-                        className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 bg-stone-50/50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                        Password
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMode('FORGOT_PASSWORD');
-                          setErrorMessage(null);
-                          setSuccessMessage(null);
-                        }}
-                        className="text-xs font-semibold text-sky-700 hover:underline cursor-pointer"
-                      >
-                        Forgot password?
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <Lock className="size-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
-                        className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 bg-stone-50/50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-900 text-white text-sm font-bold shadow-sm hover:bg-slate-800 active:scale-[0.99] transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="size-4 animate-spin text-sky-400" />
-                        <span>Signing In...</span>
-                      </>
-                    ) : (
-                      <>
-                        <LogIn className="size-4 text-sky-400" />
-                        <span>Sign In</span>
-                      </>
-                    )}
-                  </button>
-                </form>
-              </div>
-            )}
-
-            {/* REGISTER FORM */}
-            {mode === 'REGISTER' && (
-              <form onSubmit={handleRegister} className="space-y-3.5">
+              <form onSubmit={handleEmailLogin} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Email address
+                    Email Address
                   </label>
                   <div className="relative">
                     <Mail className="size-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -395,19 +302,311 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, initial
                 </div>
 
                 <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Password
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode('FORGOT_PASSWORD');
+                        setErrorMessage(null);
+                        setSuccessMessage(null);
+                      }}
+                      className="text-xs font-semibold text-sky-700 hover:underline cursor-pointer"
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Lock className="size-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
+                      className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-stone-300 bg-stone-50/50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5 pt-1">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-900 text-white text-sm font-bold shadow-sm hover:bg-slate-800 active:scale-[0.99] transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin text-sky-400" />
+                        <span>Signing In...</span>
+                      </>
+                    ) : (
+                      <>
+                        <LogIn className="size-4 text-sky-400" />
+                        <span>Login</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('PHONE_LOGIN');
+                      setErrorMessage(null);
+                      setSuccessMessage(null);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-stone-300 bg-white text-slate-800 text-xs font-bold shadow-xs hover:bg-stone-50 transition cursor-pointer"
+                  >
+                    <Phone className="size-4 text-sky-600" />
+                    <span>Continue with Phone</span>
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* PHONE LOGIN FORM */}
+            {mode === 'PHONE_LOGIN' && (
+              <form onSubmit={handlePhoneLogin} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Phone Number
+                  </label>
+                  <div className="flex gap-2">
+                    <select
+                      value={countryCode}
+                      onChange={(e) => setCountryCode(e.target.value)}
+                      className="w-24 px-2 py-2.5 rounded-xl border border-stone-300 bg-stone-50 text-slate-900 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    >
+                      <option value="+91">+91 (IN)</option>
+                      <option value="+1">+1 (US)</option>
+                      <option value="+44">+44 (UK)</option>
+                      <option value="+971">+971 (UAE)</option>
+                    </select>
+                    <div className="relative flex-1">
+                      <Phone className="size-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="tel"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        placeholder="9876543210"
+                        className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 bg-stone-50/50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="size-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={phonePassword}
+                      onChange={(e) => setPhonePassword(e.target.value)}
+                      placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
+                      className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-stone-300 bg-stone-50/50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5 pt-1">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-900 text-white text-sm font-bold shadow-sm hover:bg-slate-800 active:scale-[0.99] transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin text-sky-400" />
+                        <span>Signing In...</span>
+                      </>
+                    ) : (
+                      <>
+                        <LogIn className="size-4 text-sky-400" />
+                        <span>Login with Phone</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('LOGIN');
+                      setErrorMessage(null);
+                      setSuccessMessage(null);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-stone-300 bg-white text-slate-800 text-xs font-bold shadow-xs hover:bg-stone-50 transition cursor-pointer"
+                  >
+                    <Mail className="size-4 text-sky-600" />
+                    <span>Back to Email Login</span>
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* REGISTER FORM */}
+            {mode === 'REGISTER' && (
+              <form onSubmit={handleRegister} className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Full Name
+                  </label>
+                  <div className="relative">
+                    <User className="size-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Aarav Sharma"
+                      className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 bg-stone-50/50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail className="size-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="email"
+                      value={regEmail}
+                      onChange={(e) => setRegEmail(e.target.value)}
+                      placeholder="you@institution.edu"
+                      className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 bg-stone-50/50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Phone Number
+                  </label>
+                  <div className="flex gap-2">
+                    <select
+                      value={countryCode}
+                      onChange={(e) => setCountryCode(e.target.value)}
+                      className="w-24 px-2 py-2.5 rounded-xl border border-stone-300 bg-stone-50 text-slate-900 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    >
+                      <option value="+91">+91 (IN)</option>
+                      <option value="+1">+1 (US)</option>
+                      <option value="+44">+44 (UK)</option>
+                      <option value="+971">+971 (UAE)</option>
+                    </select>
+                    <div className="relative flex-1">
+                      <Phone className="size-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="tel"
+                        value={regPhone}
+                        onChange={(e) => setRegPhone(e.target.value)}
+                        placeholder="9876543210"
+                        className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 bg-stone-50/50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    User Type
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setUserRole('student')}
+                      className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                        userRole === 'student'
+                          ? 'border-sky-600 bg-sky-50 text-sky-900 shadow-xs'
+                          : 'border-stone-200 bg-stone-50 text-stone-700 hover:border-stone-300'
+                      }`}
+                    >
+                      <GraduationCap className="size-3.5 text-sky-700" />
+                      <span>Student</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUserRole('faculty')}
+                      className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                        userRole === 'faculty'
+                          ? 'border-indigo-600 bg-indigo-50 text-indigo-900 shadow-xs'
+                          : 'border-stone-200 bg-stone-50 text-stone-700 hover:border-stone-300'
+                      }`}
+                    >
+                      <Building2 className="size-3.5 text-indigo-700" />
+                      <span>Faculty</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUserRole('industry')}
+                      className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                        userRole === 'industry'
+                          ? 'border-emerald-600 bg-emerald-50 text-emerald-900 shadow-xs'
+                          : 'border-stone-200 bg-stone-50 text-stone-700 hover:border-stone-300'
+                      }`}
+                    >
+                      <Briefcase className="size-3.5 text-emerald-700" />
+                      <span>Industry</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUserRole('admin')}
+                      className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                        userRole === 'admin'
+                          ? 'border-amber-600 bg-amber-50 text-amber-900 shadow-xs'
+                          : 'border-stone-200 bg-stone-50 text-stone-700 hover:border-stone-300'
+                      }`}
+                    >
+                      <ShieldAlert className="size-3.5 text-amber-700" />
+                      <span>Admin</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                     Password (min 6 chars)
                   </label>
                   <div className="relative">
                     <Lock className="size-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      type={showPassword ? 'text' : 'password'}
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
                       placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
-                      className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-stone-300 bg-stone-50/50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition"
+                      className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-stone-300 bg-stone-50/50 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white transition"
                       required
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
                   </div>
                 </div>
 
@@ -418,7 +617,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, initial
                   <div className="relative">
                     <Lock className="size-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
@@ -441,7 +640,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, initial
                   ) : (
                     <>
                       <UserPlus className="size-4 text-sky-400" />
-                      <span>Create Account</span>
+                      <span>Register Account</span>
                     </>
                   )}
                 </button>
@@ -453,7 +652,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, initial
               <form onSubmit={handleForgotPassword} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Enter your account email
+                    Registered Email Address
                   </label>
                   <div className="relative">
                     <Mail className="size-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -476,7 +675,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, initial
                   {isLoading ? (
                     <>
                       <Loader2 className="size-4 animate-spin text-sky-400" />
-                      <span>Sending Reset Link...</span>
+                      <span>Sending Instructions...</span>
                     </>
                   ) : (
                     <>
@@ -502,29 +701,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated, initial
                 </div>
               </form>
             )}
-
-            {/* Security Note */}
-            <div className="mt-5 pt-4 border-t border-stone-100 flex items-start gap-2 text-[11px] text-stone-500">
-              <Lock className="size-3.5 shrink-0 text-sky-600 mt-0.5" />
-              <span>
-                Powered by native <strong>Firebase Authentication</strong> (Email/Password &amp; Google). Zero-Trust security rules.
-              </span>
-            </div>
           </motion.div>
-
-          {/* Bottom Security Footer */}
-          <div className="mt-6 text-center text-xs text-stone-500 space-y-1">
-            <p className="flex items-center justify-center gap-1 font-medium">
-              <ShieldCheck className="size-3.5 text-emerald-600" />
-              <span>SkillAlign Intelligence Platform &bull; Native Firebase Integration</span>
-            </p>
-          </div>
         </div>
       </main>
 
       {/* Bottom Footer */}
       <footer className="border-t border-stone-200/80 bg-white/60 py-4 text-center text-xs text-stone-500">
-        SkillAlign &copy; {new Date().getFullYear()} &bull; Real Firebase Authentication &amp; Cloud Firestore
+        SkillAlign &copy; {new Date().getFullYear()} &bull; Secure Authentication &amp; Platform Intelligence
       </footer>
     </div>
   );

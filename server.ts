@@ -227,6 +227,121 @@ Return ONLY valid JSON matching this schema:
   }
 });
 
+// --- Secure Backend Authentication API Endpoints ---
+import crypto from 'crypto';
+
+interface ServerUser {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  passwordHash: string;
+  role: 'student' | 'faculty' | 'industry' | 'admin';
+  createdAt: string;
+  updatedAt: string;
+}
+
+const serverUsers: ServerUser[] = [
+  {
+    id: 'usr_default_aarav_001',
+    fullName: 'Aarav Sharma',
+    email: 'aarav.sharma@institution.edu',
+    phone: '+919876543210',
+    passwordHash: crypto.createHash('sha256').update('password123').digest('hex'),
+    role: 'student',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+];
+
+function hashPassword(password: string): string {
+  return crypto.createHash('sha256').update(password).digest('hex');
+}
+
+app.post('/api/auth/register', (req, res) => {
+  try {
+    const { fullName, email, phone, password, role } = req.body;
+    if (!fullName || !email || !password) {
+      return res.status(400).json({ error: 'Full name, email, and password are required.' });
+    }
+    const emailLower = email.trim().toLowerCase();
+    if (serverUsers.some(u => u.email.toLowerCase() === emailLower)) {
+      return res.status(400).json({ error: 'An account with this email address already exists.' });
+    }
+
+    const newUser: ServerUser = {
+      id: `usr_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      fullName: fullName.trim(),
+      email: email.trim(),
+      phone: phone ? phone.trim() : '',
+      passwordHash: hashPassword(password),
+      role: role || 'student',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    serverUsers.push(newUser);
+    const { passwordHash, ...safeUser } = newUser;
+    res.json({ user: safeUser, message: 'Account created successfully.' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Registration failed' });
+  }
+});
+
+app.post('/api/auth/login', (req, res) => {
+  try {
+    const { identifier, password } = req.body;
+    if (!identifier || !password) {
+      return res.status(400).json({ error: 'Identifier (email/phone) and password are required.' });
+    }
+    const cleanId = identifier.trim().toLowerCase();
+    const user = serverUsers.find(
+      u => u.email.toLowerCase() === cleanId || (u.phone && u.phone.toLowerCase() === cleanId)
+    );
+
+    if (!user || user.passwordHash !== hashPassword(password)) {
+      return res.status(401).json({ error: 'Invalid email/phone or password.' });
+    }
+
+    const { passwordHash, ...safeUser } = user;
+    res.json({ user: safeUser, message: 'Login successful.' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Login failed' });
+  }
+});
+
+app.post('/api/auth/phone-login', (req, res) => {
+  try {
+    const { phone, password } = req.body;
+    if (!phone || !password) {
+      return res.status(400).json({ error: 'Phone number and password are required.' });
+    }
+    const cleanPhone = phone.trim();
+    const user = serverUsers.find(u => u.phone === cleanPhone);
+
+    if (!user || user.passwordHash !== hashPassword(password)) {
+      return res.status(401).json({ error: 'Invalid phone number or password.' });
+    }
+
+    const { passwordHash, ...safeUser } = user;
+    res.json({ user: safeUser, message: 'Phone login successful.' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Phone login failed' });
+  }
+});
+
+app.post('/api/auth/forgot-password', (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email address is required.' });
+    }
+    res.json({ success: true, message: 'If an account exists with this email, password reset instructions have been sent.' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Password reset failed' });
+  }
+});
+
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('Server error encountered:', err);

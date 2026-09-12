@@ -16,7 +16,7 @@ import {
   UserCheck,
 } from 'lucide-react';
 import { Role, UserProfile } from '../../types';
-import { saveUserWorkspace } from '../../lib/firebaseClient';
+import { saveUserWorkspace } from '../../lib/authService';
 
 interface WorkspaceSelectionScreenProps {
   userEmail: string;

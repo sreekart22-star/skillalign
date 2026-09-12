@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { User as FirebaseUser } from 'firebase/auth';
 import {
   Role,
   LearnerProfile,
@@ -14,14 +13,12 @@ import {
 } from './types';
 import { initialLearnerProfile, demoStudentDataScientist } from './data/platformData';
 import {
-  auth,
-  isFirebaseConfigured,
+  LocalAuthUser,
+  subscribeAuth,
+  logoutUser,
   fetchUserProfile,
   upsertUserProfile,
-  logOut,
-  testFirestoreConnection,
-} from './lib/firebaseClient';
-import { onAuthStateChanged } from 'firebase/auth';
+} from './lib/authService';
 import { AuthScreen } from './components/auth/AuthScreen';
 import { WorkspaceSelectionScreen } from './components/auth/WorkspaceSelectionScreen';
 import { Header } from './components/layout/Header';
@@ -78,8 +75,8 @@ import { RoleProfilesView } from './pages/employer/RoleProfilesView';
 import { AdminSystemControl } from './pages/admin/AdminSystemControl';
 
 export function App() {
-  // Firebase Authentication state
-  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  // Authentication state
+  const [currentUser, setCurrentUser] = useState<LocalAuthUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [authState, setAuthState] = useState<AuthState>('LOGIN');
   const [isInitializingAuth, setIsInitializingAuth] = useState<boolean>(true);
@@ -115,27 +112,14 @@ export function App() {
   const [portfolioProjects, setPortfolioProjects] = useState<PortfolioProject[]>([]);
   const [reassessmentCompleted, setReassessmentCompleted] = useState<boolean>(false);
 
-  // Real Firebase Session initialization, Firestore health check, and auth synchronization
+  // Session initialization and auth synchronization
   useEffect(() => {
-    // Validate Firestore connection on app mount
-    testFirestoreConnection().catch((err) => {
-      console.warn('Initial Firestore ping check:', err);
-    });
-
-    if (!isFirebaseConfigured()) {
-      setIsInitializingAuth(false);
-      setAuthState('LOGIN');
-      setMainView('auth');
-      return;
-    }
-
-    // Synchronize UI with real Firebase Authentication state changes
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = subscribeAuth(async (authUserData) => {
       try {
-        if (firebaseUser) {
-          setCurrentUser(firebaseUser);
+        if (authUserData) {
+          setCurrentUser(authUserData);
           setAuthState('LOADING_PROFILE');
-          const { profile } = await fetchUserProfile(firebaseUser.uid);
+          const { profile } = await fetchUserProfile(authUserData.uid);
           if (profile) {
             setUserProfile(profile);
             if (profile.selected_workspace) {
@@ -143,11 +127,11 @@ export function App() {
             }
           } else {
             const { profile: created } = await upsertUserProfile({
-              id: firebaseUser.uid,
-              email: firebaseUser.email || '',
-              fullName: firebaseUser.displayName || firebaseUser.email?.split('@')[0],
-              avatarUrl: firebaseUser.photoURL || '',
-              authProvider: firebaseUser.providerData?.[0]?.providerId || 'firebase',
+              id: authUserData.uid,
+              email: authUserData.email,
+              fullName: authUserData.fullName,
+              avatarUrl: authUserData.avatarUrl || '',
+              authProvider: authUserData.authProvider || 'email',
             });
             setUserProfile(created);
           }
@@ -160,7 +144,7 @@ export function App() {
           setMainView('auth');
         }
       } catch (err) {
-        console.error('Firebase Auth state change error:', err);
+        console.error('Auth state change error:', err);
         setAuthState('LOGIN');
         setMainView('auth');
       } finally {
@@ -174,7 +158,7 @@ export function App() {
   }, []);
 
   // Handler for successful authentication from AuthScreen
-  const handleAuthenticated = async (user: FirebaseUser) => {
+  const handleAuthenticated = async (user: LocalAuthUser) => {
     setCurrentUser(user);
     setAuthState('LOADING_PROFILE');
     const { profile } = await fetchUserProfile(user.uid);
@@ -186,10 +170,10 @@ export function App() {
     } else {
       const { profile: created } = await upsertUserProfile({
         id: user.uid,
-        email: user.email || '',
-        fullName: user.displayName || user.email?.split('@')[0],
-        avatarUrl: user.photoURL || '',
-        authProvider: user.providerData?.[0]?.providerId || 'firebase',
+        email: user.email,
+        fullName: user.fullName,
+        avatarUrl: user.avatarUrl || '',
+        authProvider: user.authProvider || 'email',
       });
       setUserProfile(created);
     }
@@ -199,7 +183,7 @@ export function App() {
 
   // Handler for Logout
   const handleLogout = async () => {
-    await logOut();
+    await logoutUser();
     setCurrentUser(null);
     setUserProfile(null);
     setAuthState('LOGIN');
@@ -287,7 +271,7 @@ export function App() {
         </div>
         <div className="flex items-center gap-2 text-xs font-mono font-bold text-slate-800 uppercase tracking-wider">
           <Loader2 className="size-4 animate-spin text-sky-600" />
-          <span>Verifying Firebase Auth Session...</span>
+          <span>Verifying Secure Auth Session...</span>
         </div>
       </div>
     );
